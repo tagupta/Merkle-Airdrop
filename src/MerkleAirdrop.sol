@@ -40,7 +40,7 @@ contract MerkleAirdrop is EIP712 {
             revert MerkleAirdrop__AlreadyClaimed();
         }
         //Check the signature
-        if (!_isValidSignature(account, getMessage(account, amount), v, r, s)) {
+        if (!_isValidSignature(account, getMessageHash(account, amount), v, r, s)) {
             revert MerkleAirdrop__InvalidSignature();
         }
         //use account and amount to cauculate the leaf
@@ -61,11 +61,11 @@ contract MerkleAirdrop is EIP712 {
         pure
         returns (bool)
     {
-        (address actualSigner, , ) = ECDSA.tryRecover(digest, v,r,s);
+        (address actualSigner,,) = ECDSA.tryRecover(digest, v, r, s);
         return actualSigner == account;
     }
 
-    function getMessage(address _account, uint256 _amount) public view returns (bytes32) {
+    function getMessageHash(address _account, uint256 _amount) public view returns (bytes32) {
         return _hashTypedDataV4(
             keccak256(abi.encode(MESSAGE_TYPEHASH, AirdropClaim({account: _account, amount: _amount})))
         );

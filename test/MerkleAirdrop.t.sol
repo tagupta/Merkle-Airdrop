@@ -18,6 +18,7 @@ contract MerkleAirdropTest is Test, ZkSyncChainChecker {
         bytes32(0x0fd7c981d39bece61f7499702bf59b3114a90e66b51ba2c53abdf7b62986c00a),
         0xe5ebd1e1b5a5478a944ecab36a9a954ac3b6b8216875f6524caa7a1d87096576
     ];
+    address public gasPayer;
     address user;
     uint256 userPrivateKey;
     DeployMerkleAirdrop private s_deployer;
@@ -34,14 +35,21 @@ contract MerkleAirdropTest is Test, ZkSyncChainChecker {
             (s_airdrop, s_token) = s_deployer.deployMerkleAirdrop();
         }
         (user, userPrivateKey) = makeAddrAndKey("user");
+        gasPayer = makeAddr("gasPayer");
     }
 
     function testUserCanClaimTokens() external {
         uint256 startingBalance = s_token.balanceOf(user);
+        bytes32 digest = s_airdrop.getMessageHash(user, CLAIM_AMOUNT);
+
         assertEq(startingBalance, 0, "User should start with 0 tokens");
-        vm.startPrank(user);
-        s_airdrop.claim(user, CLAIM_AMOUNT, s_proofs);
-        vm.stopPrank();
+        //sign the digest with the user's private key
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+        //set the gas payer
+        vm.prank(gasPayer);
+        //gas payer is paying for the gas
+        s_airdrop.claim(user, CLAIM_AMOUNT, s_proofs, v, r, s);
+        //check the balance of the user
         uint256 endingBalance = s_token.balanceOf(user);
         assertEq(endingBalance, CLAIM_AMOUNT, "User should have received the correct amount of tokens");
         bool hasClaimed = s_airdrop.hasClaimed(user);
